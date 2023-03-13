@@ -4,7 +4,9 @@ uniform sampler2D uBlurTexture2;
 uniform sampler2D uBlurTexture3;
 uniform sampler2D uBlurTexture4;
 uniform sampler2D uBlurTexture5;
+uniform sampler2D uLensDirtTexture;
 uniform int uMipCount;
+uniform vec2 uResolution;
 
 out vec4 outColor;
 
@@ -15,6 +17,7 @@ in vec2 vUv;
 #include "../../libs/lygia/color/tonemap/debug.glsl"
 #include "../../libs/lygia/color/tonemap/linear.glsl"
 #include "../../libs/lygia/color/tonemap/unreal.glsl"
+#include "../../libs/lygia/space/ratio.glsl"
 
 float bloomFactor(const in int mip) {
     return 1. - (1. / float(uMipCount)) * float(mip);
@@ -27,6 +30,10 @@ float lerpBloomFactor(const in float factor) {
 }
 
 void main() {
+    vec2 dirtTexSize = vec2(textureSize(uLensDirtTexture, 0));
+    vec2 st = vUv * 2. - 1.;
+    st = st * (uResolution / max(uResolution.x, uResolution.y)) / (dirtTexSize / min(dirtTexSize.x, dirtTexSize.y));
+    st = st * 0.5 + 0.5;
     float bloomStrength = .01;
 
     /*vec4 color =    lerpBloomFactor(bloomFactor(0)) * texture(uBlurTexture1, vUv) +
@@ -41,11 +48,11 @@ void main() {
                     lerpBloomFactor(.2) * texture(uBlurTexture4, vUv) +
                     lerpBloomFactor(.1) * texture(uBlurTexture5, vUv);
 
-    color *= bloomStrength;
+    vec4 dirt = texture(uLensDirtTexture, st) * vec4(6., 6., 10., 1.) * 2. + 1.;
+
+    color *= bloomStrength * dirt;
 
     color += texture(uColorTexture, vUv);
 
     outColor = tonemapUnreal(color);
-
-    //outColor = tonemapUnreal(texture(uBlurTexture1, vUv));
 }

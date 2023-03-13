@@ -6,7 +6,7 @@ import quadVert from './shader/quad.vert.glsl';
 import bloomCompositeFrag from './shader/bloom-composite.frag.glsl';
 import bloomBlurFrag from './shader/bloom-blur.frag.glsl';
 import { resizeRendererToDisplaySize } from '../libs/three-utils';
-import { BufferAttribute, BufferGeometry, Euler, Float32BufferAttribute, Mesh, Object3D, Vector2, Vector3, WebGLRenderTarget } from 'three';
+import { BufferAttribute, BufferGeometry, Euler, Float32BufferAttribute, Mesh, Object3D, TextureLoader, Vector2, Vector3, WebGLRenderTarget } from 'three';
 
 // Credts:
 // - https://github.com/mrdoob/three.js/blob/dev/examples/jsm/postprocessing/UnrealBloomPass.js
@@ -45,7 +45,7 @@ const BLOOM_MIP_COUNT = bloomKernelSizes.length;
 let bloomMaterial, bloomCompositeMaterial;
 
 // module variables
-var _isDev, _pane, camera, scene, renderer, controls, mesh, hdrRT, quadMesh;
+var _isDev, _pane, camera, scene, renderer, controls, mesh, hdrRT, quadMesh, lensDirtTexture;
 
 function init(canvas, onInit = null, isDev = false, pane = null) {
     _isDev = isDev;
@@ -59,24 +59,33 @@ function init(canvas, onInit = null, isDev = false, pane = null) {
     renderer.setClearAlpha(1);
     document.body.appendChild( renderer.domElement );
 
-    hdrRT = new THREE.WebGLRenderTarget(renderer.domElement.clientWidth, renderer.domElement.clientHeight, {
-        format: THREE.RGBAFormat,
-        type: THREE.FloatType,
-        generateMipmaps: false,
-        depthBuffer: true,
-        magFilter: THREE.LinearFilter,
-        minFilter: THREE.LinearFilter
-    });
+    const lensDirtLoader = new TextureLoader();
 
-    initBloom();
-    initParticles();
+    lensDirtLoader.load(new URL(`../assets/lens-dirt-00.jpg`, import.meta.url), (tex) => {
+        lensDirtTexture = tex;
+        lensDirtTexture.wrapS = THREE.ClampToEdgeWrapping;
+        lensDirtTexture.wrapT = THREE.ClampToEdgeWrapping;
+        lensDirtTexture.needsUpdate = true;
 
-    controls = new OrbitControls( camera, renderer.domElement );
-    controls.update();
-
-    if (onInit) onInit(this);
+        hdrRT = new THREE.WebGLRenderTarget(renderer.domElement.clientWidth, renderer.domElement.clientHeight, {
+            format: THREE.RGBAFormat,
+            type: THREE.FloatType,
+            generateMipmaps: false,
+            depthBuffer: true,
+            magFilter: THREE.LinearFilter,
+            minFilter: THREE.LinearFilter
+        });
     
-    resize();
+        initBloom();
+        initParticles();
+    
+        controls = new OrbitControls( camera, renderer.domElement );
+        controls.update();
+    
+        if (onInit) onInit(this);
+        
+        resize();
+    });
 }
 
 function initBloom() {
@@ -128,7 +137,9 @@ function initBloom() {
             uBlurTexture3: { value: bloomRenderTargetsVertical[2].texture },
             uBlurTexture4: { value: bloomRenderTargetsVertical[3].texture },
             uBlurTexture5: { value: bloomRenderTargetsVertical[4].texture },
-            uMipCount: { value: BLOOM_MIP_COUNT}
+            uLensDirtTexture: { value: lensDirtTexture },
+            uMipCount: { value: BLOOM_MIP_COUNT},
+            uResolution: { value: new Vector2(renderer.domElement.clientWidth, renderer.domElement.clientHeight) }
         },
         vertexShader: quadVert,
         fragmentShader: bloomCompositeFrag,
@@ -205,19 +216,20 @@ function run(t = 0) {
 function resize() {
     if (resizeRendererToDisplaySize(renderer)) {
         const size = new Vector2(renderer.domElement.clientWidth, renderer.domElement.clientHeight);
-
-        const canvas = renderer.domElement;
         camera.aspect = size.x / size.y;
         camera.updateProjectionMatrix();
 
-        hdrRT.setSize(size.x, size.y);
+        if (hdrRT) {
+            hdrRT.setSize(size.x, size.y);
+            bloomCompositeMaterial.uniforms.uResolution.value = size.clone();
 
-        for(let i=0; i<BLOOM_MIP_COUNT; ++i) {
-            bloomRenderTargetsHorizontal[i].setSize( size.x, size.y );
-            bloomRenderTargetsVertical[i].setSize( size.x, size.y );
-            bloomTexSizes[i] = size.clone();
-    
-            size.multiplyScalar(bloomSizeFactor);
+            for(let i=0; i<BLOOM_MIP_COUNT; ++i) {
+                bloomRenderTargetsHorizontal[i].setSize( size.x, size.y );
+                bloomRenderTargetsVertical[i].setSize( size.x, size.y );
+                bloomTexSizes[i] = size.clone();
+        
+                size.multiplyScalar(bloomSizeFactor);
+            }
         }
     }
 }

@@ -9,3 +9,4 @@ TBD
 ### Features
 
 ### Credits
+- Lens Dirt Textures from: http://sfx.thelazy.net/games/preset/10204/ and https://www.deviantart.com/kerast/art/Dust-particles-on-lens-461101707
