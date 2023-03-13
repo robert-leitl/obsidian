@@ -2,21 +2,22 @@ uniform vec2    uResolution;
 uniform float   uTime;
 
 in vec2 vUv;
+in vec3 vNormal;
+in vec3 vSurfaceToView;
 
 out vec4 outColor;
 
-#include "../../libs/lygia/space/ratio.glsl"
-#include "../../libs/lygia/math/decimation.glsl"
-#include "../../libs/lygia/draw/circle.glsl"
+#include "../../libs/lygia/lighting/specular/blinnPhong.glsl"
 
 void main(void) {
-    vec3 color = vec3(0.0);
-    vec2 st = gl_FragCoord.xy/uResolution.xy;
-    st = vUv;
-    
-    color = vec3(st.x,st.y,abs(sin(uTime * 0.001)));
-    color = decimation(color, 30.);
-    color += circle(st, .5, .1);
-    
-    outColor = vec4(color, 1.0);
+    vec3 N = normalize(vNormal);
+    vec3 V = normalize(vSurfaceToView);
+    vec3 L = normalize(vSurfaceToView);
+
+    float specular = specularBlinnPhong(L, N, V, 300.);
+
+    float mask = 1. - smoothstep(0.5, 0.6, length(vUv * 2. - 1. + vec2(0.3, 0.)));
+
+    outColor = vec4(dot(N, L) * 0.01) + vec4(specular * 200.);
+    outColor.a = 1.;
 }
