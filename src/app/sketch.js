@@ -38,7 +38,7 @@ const settings = {
 const bloomRenderTargetsHorizontal = [];
 const bloomRenderTargetsVertical = [];
 //const bloomKernelSizes = [ 3, 5, 7, 9, 11 ];
-const bloomKernelSizes = [ 10, 10, 14, 18, 22 ];
+const bloomKernelSizes = [ 8, 10, 14, 18, 22 ];
 const bloomTexSizes = [];
 const bloomSizeFactor = 0.2;
 const BLOOM_MIP_COUNT = bloomKernelSizes.length;
@@ -61,7 +61,7 @@ function init(canvas, onInit = null, isDev = false, pane = null) {
 
     const lensDirtLoader = new TextureLoader();
 
-    lensDirtLoader.load(new URL(`../assets/lens-dirt-00.jpg`, import.meta.url), (tex) => {
+    lensDirtLoader.load(new URL(`../assets/lens-dirt-01.jpg`, import.meta.url), (tex) => {
         lensDirtTexture = tex;
         lensDirtTexture.wrapS = THREE.ClampToEdgeWrapping;
         lensDirtTexture.wrapT = THREE.ClampToEdgeWrapping;
@@ -236,6 +236,12 @@ function resize() {
 
 function animate() {
     controls.update();
+
+    for(let i=0; i<mesh.count; ++i) {
+        mesh.getMatrixAt(i, dummy.matrix);
+        mesh.setMatrixAt(i, dummy.matrix);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
 }
 
 function render() {

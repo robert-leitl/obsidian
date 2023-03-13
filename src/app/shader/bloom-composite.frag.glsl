@@ -12,12 +12,7 @@ out vec4 outColor;
 
 in vec2 vUv;
 
-#include "../../libs/lygia/color/tonemap/reinhard.glsl"
-#include "../../libs/lygia/color/tonemap/filmic.glsl"
-#include "../../libs/lygia/color/tonemap/debug.glsl"
-#include "../../libs/lygia/color/tonemap/linear.glsl"
 #include "../../libs/lygia/color/tonemap/unreal.glsl"
-#include "../../libs/lygia/space/ratio.glsl"
 
 float bloomFactor(const in int mip) {
     return 1. - (1. / float(uMipCount)) * float(mip);
@@ -29,12 +24,17 @@ float lerpBloomFactor(const in float factor) {
     return mix(factor, mirrorFactor, bloomRadius);
 }
 
+vec2 objectFitCover(vec2 uv, vec2 viewportSize, vec2 objectSize) {
+    vec2 st = uv * 2. - 1.;
+    st = st * (viewportSize / max(viewportSize.x, viewportSize.y)) * (min(objectSize.x, objectSize.y) / objectSize );
+    st = st * 0.5 + 0.5;
+    return st;
+}
+
 void main() {
     vec2 dirtTexSize = vec2(textureSize(uLensDirtTexture, 0));
-    vec2 st = vUv * 2. - 1.;
-    st = st * (uResolution / max(uResolution.x, uResolution.y)) / (dirtTexSize / min(dirtTexSize.x, dirtTexSize.y));
-    st = st * 0.5 + 0.5;
-    float bloomStrength = .01;
+    vec2 st = objectFitCover(vUv, uResolution, dirtTexSize);
+    float bloomStrength = .02;
 
     /*vec4 color =    lerpBloomFactor(bloomFactor(0)) * texture(uBlurTexture1, vUv) +
 				    lerpBloomFactor(bloomFactor(1)) * texture(uBlurTexture2, vUv) +

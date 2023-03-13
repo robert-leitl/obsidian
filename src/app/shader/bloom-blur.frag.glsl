@@ -8,8 +8,11 @@ out vec4 outColor;
 in vec2 vUv;
 
 float gaussianPdf(in float x, in float sigma) {
-    float pdf = 0.39894 * exp( -0.5 * x * x/( sigma * sigma))/sigma;
-    return pow(pdf, 8.);
+    //float pdf = 0.39894 * exp( -0.5 * x * x)/sigma;
+    //float pdf = 0.39894 * exp( -0.5 * x * x/( sigma * sigma))/sigma;
+    float k = .15915494; // 1 / (2 * PI)
+    float pdf = (k / sigma) * exp(-(x * x) / (2. * sigma));
+    return pow(pdf, 1.);
 }
 
 void main() {
