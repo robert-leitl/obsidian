@@ -37,10 +37,10 @@ const settings = {
 
 const bloomRenderTargetsHorizontal = [];
 const bloomRenderTargetsVertical = [];
-//const bloomKernelSizes = [ 3, 5, 7, 9, 11 ];
-const bloomKernelSizes = [ 8, 10, 14, 18, 22 ];
+const bloomKernelSizes = [ 3, 5, 7, 9, 11 ];
+//const bloomKernelSizes = [ 8, 10, 14, 18, 22 ];
 const bloomTexSizes = [];
-const bloomSizeFactor = 0.2;
+const bloomSizeFactor = 0.3;
 const BLOOM_MIP_COUNT = bloomKernelSizes.length;
 let bloomMaterial, bloomCompositeMaterial;
 
@@ -61,7 +61,7 @@ function init(canvas, onInit = null, isDev = false, pane = null) {
 
     const lensDirtLoader = new TextureLoader();
 
-    lensDirtLoader.load(new URL(`../assets/lens-dirt-01.jpg`, import.meta.url), (tex) => {
+    lensDirtLoader.load(new URL(`../assets/lens-dirt-00.jpg`, import.meta.url), (tex) => {
         lensDirtTexture = tex;
         lensDirtTexture.wrapS = THREE.ClampToEdgeWrapping;
         lensDirtTexture.wrapT = THREE.ClampToEdgeWrapping;
@@ -78,6 +78,20 @@ function init(canvas, onInit = null, isDev = false, pane = null) {
     
         initBloom();
         initParticles();
+
+        /*const material = new THREE.ShaderMaterial( {
+            uniforms: {
+                uTime: { value: 1.0 },
+                uResolution: { value: new THREE.Vector2() }
+            },
+            vertexShader: testVert,
+            fragmentShader: testFrag,
+            glslVersion: THREE.GLSL3,
+            side: THREE.DoubleSide,
+            depthTest: true,
+        });
+        mesh = new THREE.Mesh( new THREE.TorusGeometry(0.4, 0.2), material, PARTICLE_COUNT );
+        scene.add( mesh );*/
     
         controls = new OrbitControls( camera, renderer.domElement );
         controls.update();
@@ -237,11 +251,11 @@ function resize() {
 function animate() {
     controls.update();
 
-    for(let i=0; i<mesh.count; ++i) {
+    /*for(let i=0; i<mesh.count; ++i) {
         mesh.getMatrixAt(i, dummy.matrix);
         mesh.setMatrixAt(i, dummy.matrix);
     }
-    mesh.instanceMatrix.needsUpdate = true;
+    mesh.instanceMatrix.needsUpdate = true;*/
 }
 
 function render() {

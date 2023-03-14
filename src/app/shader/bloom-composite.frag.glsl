@@ -48,7 +48,7 @@ void main() {
                     lerpBloomFactor(.2) * texture(uBlurTexture4, vUv) +
                     lerpBloomFactor(.1) * texture(uBlurTexture5, vUv);
 
-    vec4 dirt = texture(uLensDirtTexture, st) * vec4(6., 6., 10., 1.) * 2. + 1.;
+    vec4 dirt = texture(uLensDirtTexture, st) * vec4(6., 6., 10., 1.) * .9 + 1.;
 
     color *= bloomStrength * dirt;
 

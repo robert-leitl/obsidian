@@ -14,10 +14,10 @@ void main(void) {
     vec3 V = normalize(vSurfaceToView);
     vec3 L = normalize(vSurfaceToView);
 
-    float specular = specularBlinnPhong(L, N, V, 300.);
+    float specular = specularBlinnPhong(L, N, V, 3000.);
 
     float mask = 1. - smoothstep(0.5, 0.6, length(vUv * 2. - 1. + vec2(0.3, 0.)));
 
-    outColor = vec4(dot(N, L) * 0.01) + vec4(specular * 200.);
+    outColor = vec4(dot(N, L) * 0.005) + vec4(specular * 200.);
     outColor.a = 1.;
 }
