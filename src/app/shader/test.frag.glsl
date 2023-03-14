@@ -12,12 +12,12 @@ out vec4 outColor;
 void main(void) {
     vec3 N = normalize(vNormal);
     vec3 V = normalize(vSurfaceToView);
-    vec3 L = normalize(vSurfaceToView);
+    vec3 L = normalize(vec3(0., -1., .4));
 
-    float specular = specularBlinnPhong(L, N, V, 3000.);
+    float specular = specularBlinnPhong(L, N, V, 1500.);
 
     float mask = 1. - smoothstep(0.5, 0.6, length(vUv * 2. - 1. + vec2(0.3, 0.)));
 
-    outColor = vec4(dot(N, L) * 0.005) + vec4(specular * 200.);
+    outColor = vec4(dot(N, L) * 0.006) + vec4(specular * 100.);
     outColor.a = 1.;
 }

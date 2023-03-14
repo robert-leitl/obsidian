@@ -2,11 +2,13 @@ import * as THREE from 'three';
 import { OrbitControls } from '../libs/OrbitControls';
 import testVert from './shader/test.vert.glsl';
 import testFrag from './shader/test.frag.glsl';
+import rockVert from './shader/rock.vert.glsl';
+import rockFrag from './shader/rock.frag.glsl';
 import quadVert from './shader/quad.vert.glsl';
 import bloomCompositeFrag from './shader/bloom-composite.frag.glsl';
 import bloomBlurFrag from './shader/bloom-blur.frag.glsl';
 import { resizeRendererToDisplaySize } from '../libs/three-utils';
-import { BufferAttribute, BufferGeometry, Euler, Float32BufferAttribute, Mesh, Object3D, TextureLoader, Vector2, Vector3, WebGLRenderTarget } from 'three';
+import { BoxGeometry, BufferAttribute, BufferGeometry, CylinderGeometry, Euler, Float32BufferAttribute, Matrix4, Mesh, Object3D, Quaternion, Sphere, SphereGeometry, TextureLoader, TorusGeometry, Vector2, Vector3, WebGLRenderTarget } from 'three';
 
 // Credts:
 // - https://github.com/mrdoob/three.js/blob/dev/examples/jsm/postprocessing/UnrealBloomPass.js
@@ -163,7 +165,7 @@ function initBloom() {
 
 function initParticles() {
     const particleGeometry = new THREE.BufferGeometry();
-    const particleRadius = 0.03;
+    const particleRadius = 0.001;
     const particleVertices = new Float32Array([
         particleRadius, 0, 0,
         particleRadius * Math.cos((Math.PI * 2) / 3), particleRadius * Math.sin((Math.PI * 2) / 3), 0,
@@ -190,11 +192,11 @@ function initParticles() {
         vertexShader: testVert,
         fragmentShader: testFrag,
         glslVersion: THREE.GLSL3,
-        side: THREE.DoubleSide,
+        //side: THREE.DoubleSide,
         //blending: THREE.AdditiveBlending,
         depthTest: true
     });
-    mesh = new THREE.InstancedMesh( particleGeometry, material, PARTICLE_COUNT );
+    mesh = new THREE.InstancedMesh( new CylinderGeometry(particleRadius, particleRadius, .5, 3, 1), material, PARTICLE_COUNT );
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     mesh.onBeforeRender = () => {
         mesh.material.uniforms.uTime.value = time;
@@ -202,7 +204,10 @@ function initParticles() {
     scene.add( mesh );
     for(let i=0; i<mesh.count; ++i) {
         mesh.getMatrixAt(i, dummy.matrix);
-        dummy.position.x = Math.random() * .4;
+        dummy.position.x = Math.random() * .3;
+        const scale = Math.random() * 40 + 1.;
+        dummy.scale.x = scale;
+        dummy.scale.z = scale;
         dummy.position.applyEuler(new Euler(
             Math.random() * 2 * Math.PI,
             Math.random() * 2 * Math.PI,
