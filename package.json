@@ -17,7 +17,7 @@
     "@loaders.gl/core": "^3.2.3",
     "@loaders.gl/gltf": "^3.2.3",
     "rxjs": "^7.5.6",
-    "three": "^0.141.0",
+    "three": "^0.150.1",
     "tweakpane": "^3.1.0"
   }
 }

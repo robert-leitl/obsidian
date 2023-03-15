@@ -1,14 +1,15 @@
 import * as THREE from 'three';
 import { OrbitControls } from '../libs/OrbitControls';
-import testVert from './shader/test.vert.glsl';
-import testFrag from './shader/test.frag.glsl';
-import rockVert from './shader/rock.vert.glsl';
-import rockFrag from './shader/rock.frag.glsl';
+import crystalVert from './shader/crystal.vert.glsl';
+import crystalFrag from './shader/crystal.frag.glsl';
+import orbVert from './shader/orb.vert.glsl';
+import orbFrag from './shader/orb.frag.glsl';
 import quadVert from './shader/quad.vert.glsl';
 import bloomCompositeFrag from './shader/bloom-composite.frag.glsl';
 import bloomBlurFrag from './shader/bloom-blur.frag.glsl';
 import { resizeRendererToDisplaySize } from '../libs/three-utils';
-import { BoxGeometry, BufferAttribute, BufferGeometry, CylinderGeometry, Euler, Float32BufferAttribute, Matrix4, Mesh, Object3D, Quaternion, Sphere, SphereGeometry, TextureLoader, TorusGeometry, Vector2, Vector3, WebGLRenderTarget } from 'three';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { BoxGeometry, BufferAttribute, BufferGeometry, CylinderGeometry, Euler, Float32BufferAttribute, LoadingManager, Matrix4, Mesh, MeshBasicMaterial, Object3D, Quaternion, Sphere, SphereGeometry, TextureLoader, TorusGeometry, Vector2, Vector3, WebGLRenderTarget } from 'three';
 
 // Credts:
 // - https://github.com/mrdoob/three.js/blob/dev/examples/jsm/postprocessing/UnrealBloomPass.js
@@ -30,7 +31,7 @@ var frames = 0;
 // gets smaller with higher framerates --> use to adapt animation timing
 var deltaFrames = 0;
 
-const PARTICLE_COUNT = 10000;
+const PARTICLE_COUNT = 1000;
 const dummy = new THREE.Object3D();
 
 const settings = {
@@ -47,27 +48,46 @@ const BLOOM_MIP_COUNT = bloomKernelSizes.length;
 let bloomMaterial, bloomCompositeMaterial;
 
 // module variables
-var _isDev, _pane, camera, scene, renderer, controls, mesh, hdrRT, quadMesh, lensDirtTexture;
+var _isDev, 
+    _pane, 
+    _isInitialized = false,
+    camera, 
+    scene, 
+    renderer, 
+    controls, 
+    mesh, 
+    hdrRT, 
+    quadMesh, 
+    lensDirtTexture,
+    envTexture;
 
 function init(canvas, onInit = null, isDev = false, pane = null) {
     _isDev = isDev;
     _pane = pane;
 
-    camera = new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.01, 10 );
-    camera.position.z = 1;
+    const manager = new LoadingManager();
 
-    scene = new THREE.Scene();
-    renderer = new THREE.WebGLRenderer( { canvas, antialias: true } );
-    renderer.setClearAlpha(1);
-    document.body.appendChild( renderer.domElement );
-
-    const lensDirtLoader = new TextureLoader();
-
+    const lensDirtLoader = new TextureLoader(manager);
     lensDirtLoader.load(new URL(`../assets/lens-dirt-00.jpg`, import.meta.url), (tex) => {
         lensDirtTexture = tex;
         lensDirtTexture.wrapS = THREE.ClampToEdgeWrapping;
         lensDirtTexture.wrapT = THREE.ClampToEdgeWrapping;
         lensDirtTexture.needsUpdate = true;
+    });
+
+    const hdrEquirect = new RGBELoader(manager)
+        .setDataType(THREE.HalfFloatType).load(new URL('../assets/env-5.hdr', import.meta.url),  
+        (hdr) => { 
+            envTexture = hdr;
+        }, undefined, (e) => console.log(e) 
+    );
+
+    manager.onLoad = () => {
+        camera = new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.01, 10 );
+        camera.position.z = 1;
+        scene = new THREE.Scene();
+        renderer = new THREE.WebGLRenderer( { canvas, antialias: true } );
+        document.body.appendChild( renderer.domElement );
 
         hdrRT = new THREE.WebGLRenderTarget(renderer.domElement.clientWidth, renderer.domElement.clientHeight, {
             format: THREE.RGBAFormat,
@@ -80,28 +100,15 @@ function init(canvas, onInit = null, isDev = false, pane = null) {
     
         initBloom();
         initParticles();
-
-        /*const material = new THREE.ShaderMaterial( {
-            uniforms: {
-                uTime: { value: 1.0 },
-                uResolution: { value: new THREE.Vector2() }
-            },
-            vertexShader: testVert,
-            fragmentShader: testFrag,
-            glslVersion: THREE.GLSL3,
-            side: THREE.DoubleSide,
-            depthTest: true,
-        });
-        mesh = new THREE.Mesh( new THREE.TorusGeometry(0.4, 0.2), material, PARTICLE_COUNT );
-        scene.add( mesh );*/
     
         controls = new OrbitControls( camera, renderer.domElement );
         controls.update();
     
+        _isInitialized = true;
         if (onInit) onInit(this);
         
         resize();
-    });
+    }
 }
 
 function initBloom() {
@@ -165,7 +172,7 @@ function initBloom() {
 
 function initParticles() {
     const particleGeometry = new THREE.BufferGeometry();
-    const particleRadius = 0.001;
+    const particleRadius = 0.008;
     const particleVertices = new Float32Array([
         particleRadius, 0, 0,
         particleRadius * Math.cos((Math.PI * 2) / 3), particleRadius * Math.sin((Math.PI * 2) / 3), 0,
@@ -187,37 +194,60 @@ function initParticles() {
     const material = new THREE.ShaderMaterial( {
         uniforms: {
             uTime: { value: 1.0 },
-		    uResolution: { value: new THREE.Vector2() }
+		    uResolution: { value: new THREE.Vector2() },
+            uEnvTexture: { value: envTexture }
         },
-        vertexShader: testVert,
-        fragmentShader: testFrag,
+        vertexShader: crystalVert,
+        fragmentShader: crystalFrag,
         glslVersion: THREE.GLSL3,
         //side: THREE.DoubleSide,
         //blending: THREE.AdditiveBlending,
         depthTest: true
     });
-    mesh = new THREE.InstancedMesh( new CylinderGeometry(particleRadius, particleRadius, .5, 3, 1), material, PARTICLE_COUNT );
+    mesh = new THREE.InstancedMesh( new CylinderGeometry(particleRadius, particleRadius, .1, 5, 1), material, PARTICLE_COUNT );
+    mesh.geometry.applyMatrix4((new Matrix4()).makeRotationX(Math.PI / 2));
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     mesh.onBeforeRender = () => {
         mesh.material.uniforms.uTime.value = time;
     }
+    const container = new Object3D();
     scene.add( mesh );
+    const sphereRadius = 0.31;
     for(let i=0; i<mesh.count; ++i) {
         mesh.getMatrixAt(i, dummy.matrix);
-        dummy.position.x = Math.random() * .3;
-        const scale = Math.random() * 40 + 1.;
+        dummy.position.x = sphereRadius + Math.random() * 0.1;
+        const scale = Math.random() * 7 + 1.;
         dummy.scale.x = scale;
-        dummy.scale.z = scale;
+        dummy.scale.y = scale;
         dummy.position.applyEuler(new Euler(
             Math.random() * 2 * Math.PI,
             Math.random() * 2 * Math.PI,
             Math.random() * 2 * Math.PI
         ));
-        dummy.quaternion.random();
+        //dummy.quaternion.random();
+        dummy.lookAt(new Vector3(0, 0, 0));
+        dummy.updateMatrix();
+        dummy.rotation.x += (Math.random() - 0.5) * .2;
+        dummy.rotation.y += (Math.random() - 0.5) * .2;
         dummy.updateMatrix();
         mesh.setMatrixAt(i, dummy.matrix);
     }
     mesh.instanceMatrix.needsUpdate = true;
+
+    const sphere = new Mesh(
+        new SphereGeometry(0.2),
+        new THREE.ShaderMaterial( {
+            uniforms: {
+                uTime: { value: 1.0 },
+                uResolution: { value: new THREE.Vector2() },
+            },
+            vertexShader: orbVert,
+            fragmentShader: orbFrag,
+            glslVersion: THREE.GLSL3,
+            depthTest: true
+        })
+    )
+    scene.add(sphere);
 }
 
 function run(t = 0) {
@@ -233,6 +263,8 @@ function run(t = 0) {
 }
 
 function resize() {
+    if (!_isInitialized) return;
+    
     if (resizeRendererToDisplaySize(renderer)) {
         const size = new Vector2(renderer.domElement.clientWidth, renderer.domElement.clientHeight);
         camera.aspect = size.x / size.y;

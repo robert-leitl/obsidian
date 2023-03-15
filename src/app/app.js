@@ -21,9 +21,7 @@ const resize = () => {
     document.body.style.width = `${document.documentElement.clientWidth}px`;
     document.body.style.height = `${document.documentElement.clientHeight}px`;
 
-    if (sketch) {
-        sketch.resize();
-    }
+    sketch.resize();
 }
 
 // add a debounced resize listener
@@ -35,4 +33,3 @@ fromEvent(window, 'load').pipe(take(1)).subscribe(() => resize());
 // init
 const canvasElm = document.body.querySelector('canvas');
 sketch.init(canvasElm, (instance) => instance.run(), isDev, pane);
-resize();
