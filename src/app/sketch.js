@@ -216,7 +216,7 @@ function initParticles() {
     for(let i=0; i<mesh.count; ++i) {
         mesh.getMatrixAt(i, dummy.matrix);
         dummy.position.x = sphereRadius + Math.random() * 0.1;
-        const scale = Math.random() * 7 + 1.;
+        const scale = Math.random() * Math.abs(dummy.position.x) * 20. + 1.;
         dummy.scale.x = scale;
         dummy.scale.y = scale;
         dummy.position.applyEuler(new Euler(

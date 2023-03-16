@@ -34,7 +34,7 @@ vec2 objectFitCover(vec2 uv, vec2 viewportSize, vec2 objectSize) {
 void main() {
     vec2 dirtTexSize = vec2(textureSize(uLensDirtTexture, 0));
     vec2 st = objectFitCover(vUv, uResolution, dirtTexSize);
-    float bloomStrength = .02;
+    float bloomStrength = .03;
 
     /*vec4 color =    lerpBloomFactor(bloomFactor(0)) * texture(uBlurTexture1, vUv) +
 				    lerpBloomFactor(bloomFactor(1)) * texture(uBlurTexture2, vUv) +
@@ -52,7 +52,8 @@ void main() {
 
     color *= bloomStrength * dirt;
 
-    color += texture(uColorTexture, vUv);
+    vec4 base = texture(uColorTexture, vUv);
+    color += base;
 
     outColor = tonemapUnreal(color);
 }

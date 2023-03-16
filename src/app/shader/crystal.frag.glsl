@@ -30,10 +30,11 @@ void main(void) {
     float dist = 1. - smoothstep(0.1, .7 + float(vInstanceId) * 0.0001, length(vPosition));
     dist *= dist;
 
-    float modelRadiusAttenuation = (1. - length(vModelPosition.yx) * 100.) * .5 + .5;
-    float modelLengthAttenuation = max(0., 0.2 - vModelPosition.x + 0.1);
+    float modelRadiusAttenuation = smoothstep(0.7, 1., length(vModelPosition.yx) * 125.);
+    float modelLengthAttenuation = smoothstep(0.1, 1., (0.05 + vModelPosition.z) * 10.);
+    modelRadiusAttenuation = mix(1., modelRadiusAttenuation * modelLengthAttenuation, 1. - modelLengthAttenuation) * 0.5 + 0.5;
+    dist *= modelRadiusAttenuation * .5;
 
-    outColor = envReflection * 0.001 + vec4(dot(N, L) * 0.006) + vec4(specular * .1) + dist * vec4(0.9, .6, 1., 1.) * modelRadiusAttenuation;
+    outColor = envReflection * 0.001 + vec4(dot(N, L) * 0.006) + vec4(specular * .1) + dist * vec4(0.9, .6, 1., 1.);
     outColor.a = 1.;
-
 }
