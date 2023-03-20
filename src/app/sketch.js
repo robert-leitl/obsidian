@@ -170,7 +170,9 @@ function initBloom() {
     for(let i=0; i<BLOOM_MIP_COUNT; ++i) {
         const renderTargetHorizonal = new WebGLRenderTarget( size.x, size.y, { 
             type: THREE.FloatType, 
-            generateMipmaps: false 
+            generateMipmaps: false,
+            magFilter: THREE.LinearFilter,
+            minFilter: THREE.LinearFilter
         } );
         renderTargetHorizonal.texture.name = 'BloomPass.h' + i;
         renderTargetHorizonal.texture.generateMipmaps = false;
@@ -178,7 +180,9 @@ function initBloom() {
 
         const renderTargetVertical = new WebGLRenderTarget( size.x, size.y, { 
             type: THREE.FloatType, 
-            generateMipmaps: false 
+            generateMipmaps: false,
+            magFilter: THREE.LinearFilter,
+            minFilter: THREE.LinearFilter
         } );
         renderTargetVertical.texture.name = 'BloomPass.v' + i;
         renderTargetVertical.texture.generateMipmaps = false;
