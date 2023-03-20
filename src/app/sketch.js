@@ -113,7 +113,7 @@ function init(canvas, onInit = null, isDev = false, pane = null) {
         initEnvironment();
         initParticles();
     
-        if (!isMobileDevice && !iphone()) {
+        if (!isMobileDevice || iphone()) {
             controls = new OrbitControls( camera, renderer.domElement );
             controls.autoRotate = true;
             controls.autoRotateSpeed = 0.3;
