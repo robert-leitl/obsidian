@@ -14,6 +14,7 @@ import { iphone, isMobileDevice } from './platform';
 import { SecondOrderSystemValue } from './second-order-value';
 import { DeviceOrientationControls } from './device-orientation-controls';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { SecondOrderSystemQuaternion } from './second-order-quaternion';
 
 // Credts:
 // - https://github.com/mrdoob/three.js/blob/dev/examples/jsm/postprocessing/UnrealBloomPass.js
@@ -69,7 +70,9 @@ var _isDev,
     genEnvTexture,
     pmremDefines,
     contract = new SecondOrderSystemValue(2, 0.5, 1, 0),
-    crystalMesh;
+    crystalMesh,
+    soq = new SecondOrderSystemQuaternion(1, 0.5, 0, (new Quaternion()).toArray()),
+    deviceRotObj = new Object3D();
 
 function init(canvas, onInit = null, isDev = false, pane = null) {
     _isDev = isDev;
@@ -119,12 +122,12 @@ function init(canvas, onInit = null, isDev = false, pane = null) {
             controls.enablePan = false;
             controls.update();
         } else {
-            controls = new DeviceOrientationControls(scene);
+            controls = new DeviceOrientationControls(deviceRotObj);
         }
 
-        renderer.domElement.addEventListener('pointerdown', () => contractOffset = 1);
-        renderer.domElement.addEventListener('pointerup', () => contractOffset = 0);
-        renderer.domElement.addEventListener('pointerleave', () => contractOffset = 0);
+        window.addEventListener('pointerdown', () => contractOffset = 1);
+        window.addEventListener('pointerup', () => contractOffset = 0);
+        window.addEventListener('pointerleave', () => contractOffset = 0);
     
         _isInitialized = true;
         if (onInit) onInit(this);
@@ -266,7 +269,7 @@ function initParticles() {
     });
     //mesh = new THREE.InstancedMesh( new CylinderGeometry(particleRadius, particleRadius, .1, 5, 1), material, PARTICLE_COUNT );
     mesh = new THREE.InstancedMesh(crystalMesh.geometry, material, PARTICLE_COUNT );
-    const s = 0.04;
+    const s = 0.045;
     mesh.geometry.applyMatrix4((new Matrix4()).makeScale(s, s, s));
     mesh.geometry.applyMatrix4((new Matrix4()).makeRotationZ(Math.PI / 2));
     mesh.geometry.applyMatrix4((new Matrix4()).makeTranslation(0.05, 0, 0));
@@ -353,7 +356,13 @@ function resize() {
 function animate() {
     if (controls) controls.update();
 
-    contract.update(deltaTime * 0.001 + 0.0001, contractOffset);
+    const dt = deltaTime * 0.001 + 0.0001;
+
+    contract.update(dt, contractOffset);
+
+    soq.updateApprox(dt, deviceRotObj.quaternion.toArray());
+
+    scene.quaternion.set(soq.value[0], soq.value[1], soq.value[2], soq.value[3]);
 
     for(let i=0; i<mesh.count; ++i) {
         const transform = itemTransforms[i];
