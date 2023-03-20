@@ -102,7 +102,7 @@ function init(canvas, onInit = null, isDev = false, pane = null) {
 
         hdrRT = new THREE.WebGLRenderTarget(renderer.domElement.clientWidth, renderer.domElement.clientHeight, {
             format: THREE.RGBAFormat,
-            type: THREE.FloatType,
+            type: THREE.HalfFloatType,
             generateMipmaps: false,
             depthBuffer: true,
             magFilter: THREE.LinearFilter,
@@ -169,7 +169,7 @@ function initBloom() {
 
     for(let i=0; i<BLOOM_MIP_COUNT; ++i) {
         const renderTargetHorizonal = new WebGLRenderTarget( size.x, size.y, { 
-            type: THREE.FloatType, 
+            type: THREE.HalfFloatType, 
             generateMipmaps: false,
             magFilter: THREE.LinearFilter,
             minFilter: THREE.LinearFilter
@@ -179,7 +179,7 @@ function initBloom() {
         bloomRenderTargetsHorizontal.push( renderTargetHorizonal );
 
         const renderTargetVertical = new WebGLRenderTarget( size.x, size.y, { 
-            type: THREE.FloatType, 
+            type: THREE.HalfFloatType, 
             generateMipmaps: false,
             magFilter: THREE.LinearFilter,
             minFilter: THREE.LinearFilter
