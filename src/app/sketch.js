@@ -9,7 +9,7 @@ import bloomCompositeFrag from './shader/bloom-composite.frag.glsl';
 import bloomBlurFrag from './shader/bloom-blur.frag.glsl';
 import { resizeRendererToDisplaySize } from '../libs/three-utils';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
-import { BoxGeometry, BufferAttribute, BufferGeometry, CylinderGeometry, Euler, Float32BufferAttribute, LoadingManager, Matrix4, Mesh, MeshBasicMaterial, Object3D, Quaternion, Sphere, SphereGeometry, TextureLoader, TorusGeometry, Vector2, Vector3, WebGLRenderTarget } from 'three';
+import { BoxGeometry, BufferAttribute, BufferGeometry, Color, CylinderGeometry, Euler, Float32BufferAttribute, LoadingManager, Matrix4, Mesh, MeshBasicMaterial, Object3D, Plane, PointLight, Quaternion, RectAreaLight, Scene, ShaderChunk, Sphere, SphereGeometry, sRGBEncoding, TextureLoader, TorusGeometry, Vector2, Vector3, WebGLRenderTarget } from 'three';
 import { iphone, isMobileDevice } from './platform';
 import { SecondOrderSystemValue } from './second-order-value';
 import { DeviceOrientationControls } from './device-orientation-controls';
@@ -65,6 +65,8 @@ var _isDev,
     lensDirtTexture,
     envTexture,
     contractOffset = 0,
+    genEnvTexture,
+    pmremDefines,
     contract = new SecondOrderSystemValue(2, 0.5, 1, 0);
 
 function init(canvas, onInit = null, isDev = false, pane = null) {
@@ -81,12 +83,12 @@ function init(canvas, onInit = null, isDev = false, pane = null) {
         lensDirtTexture.needsUpdate = true;
     });
 
-    const hdrEquirect = new RGBELoader(manager)
+    /*const hdrEquirect = new RGBELoader(manager)
         .setDataType(THREE.HalfFloatType).load(new URL('../assets/env-5.hdr', import.meta.url),  
         (hdr) => { 
             envTexture = hdr;
         }, undefined, (e) => console.log(e) 
-    );
+    );*/
 
     manager.onLoad = () => {
         camera = new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.01, 10 );
@@ -103,8 +105,9 @@ function init(canvas, onInit = null, isDev = false, pane = null) {
             magFilter: THREE.LinearFilter,
             minFilter: THREE.LinearFilter
         });
-    
+        
         initBloom();
+        initEnvironment();
         initParticles();
     
         if (!isMobileDevice && !iphone()) {
@@ -121,12 +124,41 @@ function init(canvas, onInit = null, isDev = false, pane = null) {
 
         renderer.domElement.addEventListener('pointerdown', () => contractOffset = 1);
         renderer.domElement.addEventListener('pointerup', () => contractOffset = 0);
+        renderer.domElement.addEventListener('pointerleave', () => contractOffset = 0);
     
         _isInitialized = true;
         if (onInit) onInit(this);
         
         resize();
     }
+}
+
+function initEnvironment() {
+    const envScene = new Scene();
+
+    const material = new MeshBasicMaterial();
+	material.color.setScalar( 50 );
+    const geometry1 = new BoxGeometry(10, 10, 0.1);
+	geometry1.deleteAttribute( 'uv' );
+    const light1 = new Mesh( geometry1, material );
+    light1.position.z = 5;
+    envScene.add( light1 );
+    
+    const material2 = new MeshBasicMaterial();
+    material2.color.setRGB(120, 110, 150);
+    const geometry2 = new TorusGeometry(50, 0.4);
+	geometry1.deleteAttribute( 'uv' );
+    const light2 = new Mesh( geometry2, material2 );
+    light2.rotation.x = Math.PI / 2;
+    envScene.add( light2 );
+
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const rt = pmremGenerator.fromScene(envScene);
+    genEnvTexture = rt.texture;
+    pmremDefines = (pmremGenerator._blurMaterial.defines);
+    pmremGenerator.dispose();
+
+    //scene.background = genEnvTexture;
 }
 
 function initBloom() {
@@ -180,7 +212,7 @@ function initBloom() {
             uBlurTexture5: { value: bloomRenderTargetsVertical[4].texture },
             uLensDirtTexture: { value: lensDirtTexture },
             uMipCount: { value: BLOOM_MIP_COUNT},
-            uResolution: { value: new Vector2(renderer.domElement.clientWidth, renderer.domElement.clientHeight) }
+            uResolution: { value: new Vector2(renderer.domElement.clientWidth, renderer.domElement.clientHeight) },
         },
         vertexShader: quadVert,
         fragmentShader: bloomCompositeFrag,
@@ -210,13 +242,24 @@ function initParticles() {
     particleGeometry.setAttribute('normal', new BufferAttribute(particleNormals, 3));
     particleGeometry.setAttribute('uv', new BufferAttribute(particleTexcoords, 2));
     const material = new THREE.ShaderMaterial( {
+        defines: {
+            ...pmremDefines
+            /*CUBEUV_MAX_MIP: "8.0",
+            CUBEUV_TEXEL_HEIGHT: 0.0009765625,
+            CUBEUV_TEXEL_WIDTH: 0.0013020833333333333,
+            n: 20*/
+        },
         uniforms: {
             uTime: { value: 1.0 },
 		    uResolution: { value: new THREE.Vector2() },
-            uEnvTexture: { value: envTexture }
+            uEnvTexture: { value: genEnvTexture }
         },
         vertexShader: crystalVert,
-        fragmentShader: crystalFrag,
+        fragmentShader: `
+            #define ENVMAP_TYPE_CUBE_UV 1
+            ${ShaderChunk.cube_uv_reflection_fragment}
+            ${crystalFrag}
+        `,
         glslVersion: THREE.GLSL3,
         depthTest: true
     });

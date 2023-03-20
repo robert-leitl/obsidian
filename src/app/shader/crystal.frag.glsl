@@ -1,6 +1,6 @@
-uniform vec2        uResolution;
-uniform float       uTime;
-uniform sampler2D   uEnvTexture;
+uniform vec2          uResolution;
+uniform float         uTime;
+uniform sampler2D     uEnvTexture;
 
 in vec2 vUv;
 in vec3 vPosition;
@@ -25,7 +25,7 @@ void main(void) {
 
     float mask = 1. - smoothstep(0.5, 0.6, length(vUv * 2. - 1. + vec2(0.3, 0.)));
 
-    vec4 envReflection = texture(uEnvTexture, xyz2equirect(R));
+    vec4 envReflection = textureCubeUV(uEnvTexture, R, 0.1);
 
     float dist = 1. - smoothstep(0.1, .7 + float(vInstanceId) * 0.0001, length(vPosition));
     dist *= dist;
@@ -35,6 +35,8 @@ void main(void) {
     modelRadiusAttenuation = mix(1., modelRadiusAttenuation * modelLengthAttenuation, 1. - modelLengthAttenuation) * 0.5 + 0.5;
     dist *= modelRadiusAttenuation * .5;
 
-    outColor = envReflection * 0.001 + vec4(dot(N, L) * 0.006) + vec4(specular * .1) + dist * vec4(0.9, .6, 1., 1.);
+    outColor = envReflection * 0.0005 + vec4(dot(N, L) * 0.006) + vec4(specular * .1) + dist * vec4(0.9, .6, 1., 1.);
     outColor.a = 1.;
+
+    //outColor.rgb = envReflection.rgb * 1.;
 }
