@@ -13,6 +13,7 @@ import { BoxGeometry, BufferAttribute, BufferGeometry, Color, CylinderGeometry, 
 import { iphone, isMobileDevice } from './platform';
 import { SecondOrderSystemValue } from './second-order-value';
 import { DeviceOrientationControls } from './device-orientation-controls';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // Credts:
 // - https://github.com/mrdoob/three.js/blob/dev/examples/jsm/postprocessing/UnrealBloomPass.js
@@ -34,7 +35,7 @@ var frames = 0;
 // gets smaller with higher framerates --> use to adapt animation timing
 var deltaFrames = 0;
 
-const PARTICLE_COUNT = 500;
+const PARTICLE_COUNT = 300;
 const dummy = new THREE.Object3D();
 const itemTransforms = [];
 
@@ -67,7 +68,8 @@ var _isDev,
     contractOffset = 0,
     genEnvTexture,
     pmremDefines,
-    contract = new SecondOrderSystemValue(2, 0.5, 1, 0);
+    contract = new SecondOrderSystemValue(2, 0.5, 1, 0),
+    crystalMesh;
 
 function init(canvas, onInit = null, isDev = false, pane = null) {
     _isDev = isDev;
@@ -83,18 +85,16 @@ function init(canvas, onInit = null, isDev = false, pane = null) {
         lensDirtTexture.needsUpdate = true;
     });
 
-    /*const hdrEquirect = new RGBELoader(manager)
-        .setDataType(THREE.HalfFloatType).load(new URL('../assets/env-5.hdr', import.meta.url),  
-        (hdr) => { 
-            envTexture = hdr;
-        }, undefined, (e) => console.log(e) 
-    );*/
+    const objLoader = new GLTFLoader(manager);
+    objLoader.load((new URL('../assets/crystal.glb', import.meta.url)).toString(), (gltf) => {
+        crystalMesh = (gltf.scene.children[0])
+    });
 
     manager.onLoad = () => {
         camera = new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.01, 10 );
         camera.position.z = 1;
         scene = new THREE.Scene();
-        renderer = new THREE.WebGLRenderer( { canvas, antialias: true } );
+        renderer = new THREE.WebGLRenderer( { canvas, antialias: false } );
         document.body.appendChild( renderer.domElement );
 
         hdrRT = new THREE.WebGLRenderTarget(renderer.domElement.clientWidth, renderer.domElement.clientHeight, {
@@ -113,7 +113,7 @@ function init(canvas, onInit = null, isDev = false, pane = null) {
         if (!isMobileDevice && !iphone()) {
             controls = new OrbitControls( camera, renderer.domElement );
             controls.autoRotate = true;
-            controls.autoRotateSpeed = 0.4;
+            controls.autoRotateSpeed = 0.3;
             controls.enableDamping = true;
             controls.enableZoom = false;
             controls.enablePan = false;
@@ -252,7 +252,8 @@ function initParticles() {
         uniforms: {
             uTime: { value: 1.0 },
 		    uResolution: { value: new THREE.Vector2() },
-            uEnvTexture: { value: genEnvTexture }
+            uEnvTexture: { value: genEnvTexture },
+            uDirtTexture: { value: lensDirtTexture }
         },
         vertexShader: crystalVert,
         fragmentShader: `
@@ -263,7 +264,10 @@ function initParticles() {
         glslVersion: THREE.GLSL3,
         depthTest: true
     });
-    mesh = new THREE.InstancedMesh( new CylinderGeometry(particleRadius, particleRadius, .1, 5, 1), material, PARTICLE_COUNT );
+    //mesh = new THREE.InstancedMesh( new CylinderGeometry(particleRadius, particleRadius, .1, 5, 1), material, PARTICLE_COUNT );
+    mesh = new THREE.InstancedMesh(crystalMesh.geometry, material, PARTICLE_COUNT );
+    const s = 0.04;
+    mesh.geometry.applyMatrix4((new Matrix4()).makeScale(s, s, s));
     mesh.geometry.applyMatrix4((new Matrix4()).makeRotationZ(Math.PI / 2));
     mesh.geometry.applyMatrix4((new Matrix4()).makeTranslation(0.05, 0, 0));
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -279,7 +283,7 @@ function initParticles() {
             phase: Math.random() * 2 * Math.PI,
             velocity: Math.random(),
             matrix: new Matrix4(),
-            position: new Vector3(sphereRadius + Math.random() * 0.2, 0, 0),
+            position: new Vector3(sphereRadius + Math.random() * .4, 0, 0),
             scale: new Vector3((Math.random() * 3 + 1) / radiusScale, radiusScale, radiusScale),
             rotation: (new Quaternion()).random()
         };
