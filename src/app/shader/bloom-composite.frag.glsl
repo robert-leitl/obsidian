@@ -36,12 +36,6 @@ void main() {
     vec2 st = objectFitCover(vUv, uResolution, dirtTexSize);
     float bloomStrength = .03;
 
-    /*vec4 color =    lerpBloomFactor(bloomFactor(0)) * texture(uBlurTexture1, vUv) +
-				    lerpBloomFactor(bloomFactor(1)) * texture(uBlurTexture2, vUv) +
-                    lerpBloomFactor(bloomFactor(2)) * texture(uBlurTexture3, vUv) +
-                    lerpBloomFactor(bloomFactor(3)) * texture(uBlurTexture4, vUv) +
-                    lerpBloomFactor(bloomFactor(4)) * texture(uBlurTexture5, vUv);*/
-
     vec4 color =    lerpBloomFactor(.9) * texture(uBlurTexture1, vUv) +
 				    lerpBloomFactor(.7) * texture(uBlurTexture2, vUv) +
                     lerpBloomFactor(.5) * texture(uBlurTexture3, vUv) +

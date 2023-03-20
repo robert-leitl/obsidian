@@ -10,6 +10,9 @@ import bloomBlurFrag from './shader/bloom-blur.frag.glsl';
 import { resizeRendererToDisplaySize } from '../libs/three-utils';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { BoxGeometry, BufferAttribute, BufferGeometry, CylinderGeometry, Euler, Float32BufferAttribute, LoadingManager, Matrix4, Mesh, MeshBasicMaterial, Object3D, Quaternion, Sphere, SphereGeometry, TextureLoader, TorusGeometry, Vector2, Vector3, WebGLRenderTarget } from 'three';
+import { iphone, isMobileDevice } from './platform';
+import { SecondOrderSystemValue } from './second-order-value';
+import { DeviceOrientationControls } from './device-orientation-controls';
 
 // Credts:
 // - https://github.com/mrdoob/three.js/blob/dev/examples/jsm/postprocessing/UnrealBloomPass.js
@@ -31,8 +34,9 @@ var frames = 0;
 // gets smaller with higher framerates --> use to adapt animation timing
 var deltaFrames = 0;
 
-const PARTICLE_COUNT = 1000;
+const PARTICLE_COUNT = 500;
 const dummy = new THREE.Object3D();
+const itemTransforms = [];
 
 const settings = {
 }
@@ -59,7 +63,9 @@ var _isDev,
     hdrRT, 
     quadMesh, 
     lensDirtTexture,
-    envTexture;
+    envTexture,
+    contractOffset = 0,
+    contract = new SecondOrderSystemValue(2, 0.5, 1, 0);
 
 function init(canvas, onInit = null, isDev = false, pane = null) {
     _isDev = isDev;
@@ -101,8 +107,20 @@ function init(canvas, onInit = null, isDev = false, pane = null) {
         initBloom();
         initParticles();
     
-        controls = new OrbitControls( camera, renderer.domElement );
-        controls.update();
+        if (!isMobileDevice && !iphone()) {
+            controls = new OrbitControls( camera, renderer.domElement );
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.4;
+            controls.enableDamping = true;
+            controls.enableZoom = false;
+            controls.enablePan = false;
+            controls.update();
+        } else {
+            controls = new DeviceOrientationControls(scene);
+        }
+
+        renderer.domElement.addEventListener('pointerdown', () => contractOffset = 1);
+        renderer.domElement.addEventListener('pointerup', () => contractOffset = 0);
     
         _isInitialized = true;
         if (onInit) onInit(this);
@@ -172,7 +190,7 @@ function initBloom() {
 
 function initParticles() {
     const particleGeometry = new THREE.BufferGeometry();
-    const particleRadius = 0.008;
+    const particleRadius = 0.025;
     const particleVertices = new Float32Array([
         particleRadius, 0, 0,
         particleRadius * Math.cos((Math.PI * 2) / 3), particleRadius * Math.sin((Math.PI * 2) / 3), 0,
@@ -200,37 +218,37 @@ function initParticles() {
         vertexShader: crystalVert,
         fragmentShader: crystalFrag,
         glslVersion: THREE.GLSL3,
-        //side: THREE.DoubleSide,
-        //blending: THREE.AdditiveBlending,
         depthTest: true
     });
     mesh = new THREE.InstancedMesh( new CylinderGeometry(particleRadius, particleRadius, .1, 5, 1), material, PARTICLE_COUNT );
-    mesh.geometry.applyMatrix4((new Matrix4()).makeRotationX(Math.PI / 2));
+    mesh.geometry.applyMatrix4((new Matrix4()).makeRotationZ(Math.PI / 2));
+    mesh.geometry.applyMatrix4((new Matrix4()).makeTranslation(0.05, 0, 0));
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     mesh.onBeforeRender = () => {
         mesh.material.uniforms.uTime.value = time;
     }
-    const container = new Object3D();
     scene.add( mesh );
-    const sphereRadius = 0.31;
+    const sphereRadius = 0.3;
     for(let i=0; i<mesh.count; ++i) {
-        mesh.getMatrixAt(i, dummy.matrix);
-        dummy.position.x = sphereRadius + Math.random() * 0.1;
-        const scale = Math.random() * Math.abs(dummy.position.x) * 20. + 1.;
-        dummy.scale.x = scale;
-        dummy.scale.y = scale;
-        dummy.position.applyEuler(new Euler(
-            Math.random() * 2 * Math.PI,
-            Math.random() * 2 * Math.PI,
-            Math.random() * 2 * Math.PI
-        ));
-        //dummy.quaternion.random();
-        dummy.lookAt(new Vector3(0, 0, 0));
-        dummy.updateMatrix();
-        dummy.rotation.x += (Math.random() - 0.5) * .2;
-        dummy.rotation.y += (Math.random() - 0.5) * .2;
-        dummy.updateMatrix();
-        mesh.setMatrixAt(i, dummy.matrix);
+        const radiusScale = Math.random() * 2. + 1;
+        itemTransforms[i] = {
+            radiusOffset: 0,
+            phase: Math.random() * 2 * Math.PI,
+            velocity: Math.random(),
+            matrix: new Matrix4(),
+            position: new Vector3(sphereRadius + Math.random() * 0.2, 0, 0),
+            scale: new Vector3((Math.random() * 3 + 1) / radiusScale, radiusScale, radiusScale),
+            rotation: (new Quaternion()).random()
+        };
+
+        const transform = itemTransforms[i];
+        const matrix = transform.matrix.identity();
+        matrix.setPosition(transform.position);
+        const scaleMat = (new Matrix4()).makeScale(transform.scale.x, transform.scale.y, transform.scale.z);
+        const rotMat = (new Matrix4()).makeRotationFromQuaternion(transform.rotation);
+        matrix.premultiply(rotMat);
+        matrix.multiply(scaleMat);
+        mesh.setMatrixAt(i, matrix);
     }
     mesh.instanceMatrix.needsUpdate = true;
 
@@ -286,13 +304,24 @@ function resize() {
 }
 
 function animate() {
-    controls.update();
+    if (controls) controls.update();
 
-    /*for(let i=0; i<mesh.count; ++i) {
-        mesh.getMatrixAt(i, dummy.matrix);
-        mesh.setMatrixAt(i, dummy.matrix);
+    contract.update(deltaTime * 0.001 + 0.0001, contractOffset);
+
+    for(let i=0; i<mesh.count; ++i) {
+        const transform = itemTransforms[i];
+        const matrix = transform.matrix.identity();
+        const radiusOffset = (Math.sin(time * 0.001 * transform.velocity + transform.phase) * 0.5 + 0.5) * 0.05;
+        let x = transform.position.x + radiusOffset;
+        x *= (1. - contract.value) + contract.value * 0.6;
+        const posMat = matrix.makeTranslation(x, transform.position.y, transform.position.z);
+        const scaleMat = (new Matrix4()).makeScale(transform.scale.x, transform.scale.y, transform.scale.z);
+        const rotMat = (new Matrix4()).makeRotationFromQuaternion(transform.rotation);
+        matrix.premultiply(rotMat);
+        matrix.multiply(scaleMat);
+        mesh.setMatrixAt(i, matrix);
     }
-    mesh.instanceMatrix.needsUpdate = true;*/
+    mesh.instanceMatrix.needsUpdate = true;
 }
 
 function render() {
