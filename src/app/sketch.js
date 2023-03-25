@@ -15,6 +15,7 @@ import { SecondOrderSystemValue } from './second-order-value';
 import { DeviceOrientationControls } from './device-orientation-controls';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { SecondOrderSystemQuaternion } from './second-order-quaternion';
+import { VRButton } from "three/examples/jsm/webxr/VRButton.js";
 
 // Credts:
 // - https://github.com/mrdoob/three.js/blob/dev/examples/jsm/postprocessing/UnrealBloomPass.js
@@ -94,11 +95,14 @@ function init(canvas, onInit = null, isDev = false, pane = null) {
     });
 
     manager.onLoad = () => {
-        camera = new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.01, 10 );
-        camera.position.z = 1;
+        camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.01, 10 );
+        camera.position.z = 3;
         scene = new THREE.Scene();
         renderer = new THREE.WebGLRenderer( { canvas, antialias: false } );
         document.body.appendChild( renderer.domElement );
+
+        renderer.xr.enabled = true;
+        document.body.append(VRButton.createButton(renderer));
 
         hdrRT = new THREE.WebGLRenderTarget(renderer.domElement.clientWidth, renderer.domElement.clientHeight, {
             format: THREE.RGBAFormat,
@@ -132,6 +136,8 @@ function init(canvas, onInit = null, isDev = false, pane = null) {
         _isInitialized = true;
         if (onInit) onInit(this);
         
+        renderer.setAnimationLoop((t) => run(t));
+
         resize();
     }
 }
@@ -330,8 +336,6 @@ function run(t = 0) {
 
     animate();
     render();
-
-    requestAnimationFrame((t) => run(t));
 }
 
 function resize() {
@@ -361,6 +365,7 @@ function animate() {
     if (controls) controls.update();
 
     const dt = deltaTime * 0.001 + 0.0001;
+    contractOffset = 1;
 
     contract.update(dt, contractOffset);
 
@@ -382,10 +387,13 @@ function animate() {
         mesh.setMatrixAt(i, matrix);
     }
     mesh.instanceMatrix.needsUpdate = true;
+
+    mesh.rotation.y += 0.001;
 }
 
 function render() {
-    renderer.setRenderTarget(hdrRT);
+    renderer.render( scene, camera );
+    /*renderer.setRenderTarget(hdrRT);
     renderer.clear();
     renderer.render( scene, camera );
 
@@ -411,7 +419,7 @@ function render() {
     
     renderer.setRenderTarget(null);
     quadMesh.material = bloomCompositeMaterial;
-    renderer.render(quadMesh, camera);
+    renderer.render(quadMesh, camera);*/
 }
 
 export default {

@@ -1,6 +1,17 @@
 import { debounceTime, fromEvent, take } from 'rxjs';
 import { Pane } from 'tweakpane';
 import sketch from './sketch';
+import { LookingGlassConfig, LookingGlassWebXRPolyfill } from '@lookingglass/webxr'
+
+const config = LookingGlassConfig
+config.tileHeight = 1024
+config.numViews = 45
+config.targetY = 0
+config.targetZ = .4
+config.targetX = 0
+config.targetDiam = 1.5
+config.fovy = (20 * Math.PI) / 180
+new LookingGlassWebXRPolyfill()
 
 const queryString = window.location.search;
 const urlParams = new URLSearchParams(queryString);

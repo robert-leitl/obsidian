@@ -37,7 +37,9 @@ void main(void) {
     modelRadiusAttenuation = mix(1., modelRadiusAttenuation * modelLengthAttenuation, 1. - modelLengthAttenuation) * 0.5 + 0.5;
     dist *= modelRadiusAttenuation * 1.;
 
-    outColor = envReflection * 0.0008 + vec4(dot(N, L) * 0.006) + vec4(specular * .2) + dist * vec4(.9, .5, 1.1, 1.);
+    outColor = envReflection * 0.002 + vec4(dot(N, L) * 0.006) + vec4(specular * .5) + dist * vec4(.9, .5, 1.1, 1.);
     outColor.a = 1.;
+    outColor.rgb *= 5.5;
+    outColor.rgb += 0.01;
 
 }
